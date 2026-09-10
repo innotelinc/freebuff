@@ -18,7 +18,8 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: write # push the tag, create the release
+  actions: write # dispatch the image-publish workflow at the tag ref
 
 jobs:
   release:
