@@ -1,0 +1,4 @@
+[submodule "omniroute"]
+	path = omniroute
+	url = https://github.com/diegosouzapw/OmniRoute.git
+	branch = v3.8.50

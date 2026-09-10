@@ -23,7 +23,7 @@ import { useChatStore } from '../state/chat-store'
 import { useFreebuffSessionStore } from '../state/freebuff-session-store'
 import { getAuthTokenDetails } from '../utils/auth'
 import { stopActiveRun } from '../utils/active-run'
-import { IS_FREEBUFF } from '../utils/constants'
+import { FREE_MODE_GATED } from '../utils/constants'
 import {
   isFreebuffInstanceOwnedByDeadLocalProcess,
   recordFreebuffInstanceOwner,
@@ -209,7 +209,7 @@ async function restartFreebuffSession(
   mode: RestartMode,
   opts: RestartOpts = {},
 ): Promise<void> {
-  if (!IS_FREEBUFF) return
+  if (!FREE_MODE_GATED) return
   // A reset changes chat ownership. Stop and checkpoint the old run before
   // resetting its store so late deltas cannot land in the next session.
   if (opts.resetChat) {
@@ -329,7 +329,7 @@ export function resolveFreebuffModelSelectionForSession(
  * branch). Background rejoins hitting the same lock revert silently instead.
  */
 export function startFreebuffSession(model: string): Promise<void> {
-  if (!IS_FREEBUFF) return Promise.resolve()
+  if (!FREE_MODE_GATED) return Promise.resolve()
   // This is the only explicit user-pick path (called from the picker on
   // click / Enter), so persistence belongs here — and ONLY here. Server-
   // driven flips (`model_locked`, `model_unavailable`, takeover) go
@@ -347,7 +347,7 @@ export function startFreebuffSession(model: string): Promise<void> {
 let takeoverInFlight: Promise<void> | null = null
 
 export function takeOverFreebuffSession(): Promise<void> {
-  if (!IS_FREEBUFF) return Promise.resolve()
+  if (!FREE_MODE_GATED) return Promise.resolve()
   if (takeoverInFlight) return takeoverInFlight
 
   const { session } = useFreebuffSessionStore.getState()
@@ -363,7 +363,7 @@ export function takeOverFreebuffSession(): Promise<void> {
 }
 
 export function markFreebuffSessionSuperseded(): void {
-  if (!IS_FREEBUFF) return
+  if (!FREE_MODE_GATED) return
   controller?.abort()
   controller?.apply({ status: 'superseded' })
 }
@@ -379,7 +379,7 @@ export function markFreebuffSessionCountryBlocked(params: {
   countryBlockReason?: FreebuffCountryBlockReason
   ipPrivacySignals?: FreebuffIpPrivacySignal[]
 }): void {
-  if (!IS_FREEBUFF) return
+  if (!FREE_MODE_GATED) return
   controller?.abort()
   controller?.apply({ status: 'country_blocked', ...params })
   // Best-effort DELETE so we don't hold a session row the server is already
@@ -394,7 +394,7 @@ export function markFreebuffSessionCountryBlocked(params: {
  *  Preserves any `rateLimitsByModel` snapshot from the prior session so the
  *  banner can show today's session count without an extra fetch. */
 export function markFreebuffSessionEnded(): void {
-  if (!IS_FREEBUFF) return
+  if (!FREE_MODE_GATED) return
   controller?.abort()
   const current = useFreebuffSessionStore.getState().session
   const rateLimitsByModel = getRateLimitsByModel(current)
@@ -456,9 +456,10 @@ export function useFreebuffSession(): UseFreebuffSessionResult {
   useEffect(() => {
     const { setSession, setFailure } = useFreebuffSessionStore.getState()
 
-    if (!IS_FREEBUFF) {
-      // Non-freebuff (Codebuff) builds never gate on a free session; leave the
-      // store empty (app.tsx's session routing is all behind IS_FREEBUFF).
+    if (!FREE_MODE_GATED) {
+      // Codebuff builds and self-hosted gateway mode never gate on a free
+      // session; leave the store empty (app.tsx's session routing is all
+      // behind FREE_MODE_GATED).
       setSession(null)
       return
     }

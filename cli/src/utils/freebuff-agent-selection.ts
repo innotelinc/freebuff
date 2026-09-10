@@ -7,13 +7,13 @@ import { getSelectedFreebuffModel } from '../state/freebuff-model-store'
 import {
   AGENT_MODE_TO_ID,
   CLI_HARNESS,
-  IS_FREEBUFF,
+  FREE_MODE_GATED,
   type AgentMode,
 } from './constants'
 
 /**
  * Freebuff is locked to LITE (chat-store's setAgentMode is a no-op when
- * IS_FREEBUFF), so this is effectively "which root does the selected model
+ * FREE_MODE_GATED), so this is effectively "which root does the selected model
  * run". Both harnesses have a root per picker model; CLI_HARNESS picks the
  * family. It is currently base3; keeping both branches live preserves the
  * release-based rollback path for the CLI.
@@ -25,7 +25,7 @@ export function getFreebuffCliAgentIdForModel(model: string): string {
 }
 
 export function getAgentIdForMode(agentMode: AgentMode): string {
-  if (IS_FREEBUFF && agentMode === 'LITE') {
+  if (FREE_MODE_GATED && agentMode === 'LITE') {
     return getFreebuffCliAgentIdForModel(getSelectedFreebuffModel())
   }
 

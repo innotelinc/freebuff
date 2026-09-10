@@ -1,3 +1,5 @@
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
+
 import { getWebsiteUrl } from './constants'
 
 import type { ComposioMetaToolName } from '@codebuff/common/constants/composio'
@@ -24,6 +26,19 @@ export async function executeComposioToolViaServer(params: {
   toolName: ComposioMetaToolName
   input: Record<string, unknown>
 }): Promise<ToolResultOutput[]> {
+  // Composio is executed by the Codebuff backend; in OmniRoute mode there is
+  // no backend (and no account), so refuse locally instead of phoning home.
+  if (isOmnirouteMode()) {
+    return [
+      {
+        type: 'json',
+        value: {
+          errorMessage: 'Composio tools are not available in OmniRoute mode',
+        },
+      },
+    ]
+  }
+
   try {
     const response = await fetch(
       new URL('/api/v1/composio/execute', getWebsiteUrl()),

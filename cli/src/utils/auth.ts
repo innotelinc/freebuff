@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 
 import { getCiEnv } from '@codebuff/common/env-ci'
+import { isOmnirouteMode, OMNIROUTE_LOCAL_TOKEN } from '@codebuff/common/constants/omniroute'
 import { z } from 'zod'
 
 
@@ -114,6 +115,14 @@ export const getAuthTokenDetails = (
   const envToken = ciEnv.CODEBUFF_API_KEY
   if (envToken) {
     return { token: envToken, source: 'environment' }
+  }
+
+  // Self-hosted gateway mode: there is no Codebuff account to authenticate
+  // against — the gateway owns auth. A non-empty placeholder keeps the client
+  // construction and auth-state flow working; the SDK routes every request to
+  // the gateway instead of the backend, so this token never reaches codebuff.com.
+  if (isOmnirouteMode()) {
+    return { token: OMNIROUTE_LOCAL_TOKEN, source: 'environment' }
   }
 
   return { source: null }

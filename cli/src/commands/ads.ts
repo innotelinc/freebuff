@@ -6,6 +6,7 @@ import { getSystemMessage } from '../utils/message-history'
 import { saveSettings, loadSettings } from '../utils/settings'
 
 import { getAuthToken } from '../utils/auth'
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 import { setSponsoredProposalPrefs } from '../utils/sponsored-proposal-api'
 import { runSponsoredProposalControl } from '../utils/sponsored-proposal-control'
 import { sponsoredCliUnavailableCopy } from '../utils/sponsored-availability'
@@ -46,6 +47,9 @@ export const handleAdsDisable = (): {
 }
 
 export const getAdsEnabled = (): boolean => {
+  // Self-hosted gateway mode has no Codebuff account to bill an impression
+  // against, so the ad rail never turns on.
+  if (isOmnirouteMode()) return false
   if (IS_FREEBUFF) return true
 
   // Codebuff LITE is a paid mode now, so use the normal saved setting.

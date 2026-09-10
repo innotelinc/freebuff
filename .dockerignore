@@ -1,0 +1,22 @@
+# Vendored gateway source — not part of the Freebuff image
+omniroute
+.gitmodules
+
+# VCS / local state
+.git
+.gitignore
+data
+omniroute-data
+*.log
+.events
+.events.*
+
+# Dependency / build output
+node_modules
+**/node_modules
+dist
+**/dist
+.tmp
+
+# Editor cruft
+.DS_Store

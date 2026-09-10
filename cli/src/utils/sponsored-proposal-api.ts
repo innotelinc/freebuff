@@ -1,4 +1,5 @@
 import { normalizeRepoFullName } from '@codebuff/common/ads/sponsored-proposal-target'
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 
 import { FREEBUFF_WEB_URL } from '../login/constants'
 
@@ -123,6 +124,10 @@ async function call<T>(
   authToken: string,
   payload?: unknown,
 ): Promise<T | null> {
+  // OmniRoute mode has no Freebuff account, so the whole sponsored-proposal
+  // channel is off: the local token must not leave the machine. Callers treat
+  // a null like a failed request, which is exactly what this is.
+  if (isOmnirouteMode()) return null
   try {
     const response = await fetch(`${baseUrl()}${path}`, {
       method,
@@ -161,6 +166,9 @@ export async function fetchSponsoredProposal(
   if (!repo) return { status: 'unavailable' }
 
   const path = `/api/v1/ads/proposal?repo=${encodeURIComponent(repo)}`
+  // In OmniRoute mode there are no proposals: authoritative absence, so no
+  // card can ever be inserted even if a caller bypasses the ads gate.
+  if (isOmnirouteMode()) return { status: 'absent' }
   try {
     const response = await fetch(`${baseUrl()}${path}`, {
       method: 'GET',
@@ -274,6 +282,14 @@ async function callDetailed<T>(
   | { ok: true; status: number; value: T }
   | { ok: false; status: number; message: string }
 > {
+  // OmniRoute mode: same gate as `call` — refuse without a network request.
+  if (isOmnirouteMode()) {
+    return {
+      ok: false,
+      status: 0,
+      message: 'Sponsored proposals are disabled in OmniRoute mode.',
+    }
+  }
   let response: Response
   try {
     response = await fetch(`${baseUrl()}${path}`, {

@@ -1,3 +1,4 @@
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 import React, { useCallback, useEffect } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -63,6 +64,20 @@ export const FeedbackContainer: React.FC<FeedbackContainerProps> = ({
 
     const { clientFeedbackId } = store
     if (!clientFeedbackId) return
+
+    // OmniRoute mode: the CLI talks only to the user's own gateway, so there is
+    // no Codebuff backend to send feedback to — and the local token must not
+    // leave the machine. Close the form with a clear message instead of a POST
+    // that could only 401.
+    if (isOmnirouteMode()) {
+      store.setIsSubmitting(false)
+      store.closeFeedback()
+      if (onExitFeedback) onExitFeedback()
+      showClipboardMessage('Feedback is disabled in OmniRoute mode', {
+        durationMs: 5000,
+      })
+      return
+    }
 
     const text = feedbackText.trim()
     if (!text) {

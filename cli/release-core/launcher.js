@@ -73,6 +73,15 @@ function createLauncher(productConfig) {
   }
 
   /**
+   * OmniRoute (self-hosted gateway) mode — the user's own gateway is the
+   * backend, so the launcher must not phone home to codebuff.com's release
+   * infrastructure (version checks, binary downloads) or npm's registry.
+   * Same env switch the SDK/CLI use; this file is plain CJS, so it reads the
+   * variable directly instead of importing the TS constants module.
+   */
+  const isOmnirouteMode = () => Boolean(process.env.OMNIROUTE_BASE_URL)
+
+  /**
    * How long a binary has to survive before a crash stops looking like a
    * startup failure. Used to bound the STATUS_STACK_BUFFER_OVERRUN heuristic
    * below, which is only trustworthy for deaths during startup.
@@ -165,6 +174,13 @@ function createLauncher(productConfig) {
   })
 
   function getPostHogConfig() {
+    // In OmniRoute mode the CLI talks only to the user's own gateway — never
+    // fire PostHog telemetry (the container's placeholder key must not reach
+    // PostHog).
+    if (process.env.OMNIROUTE_BASE_URL) {
+      return null
+    }
+
     const apiKey =
       process.env.CODEBUFF_POSTHOG_API_KEY ||
       process.env.NEXT_PUBLIC_POSTHOG_API_KEY
@@ -425,6 +441,12 @@ function createLauncher(productConfig) {
   }
 
   async function getLatestVersion() {
+    // OmniRoute mode: no registry lookups. The released binary is fixed at
+    // install time; updates are the user's own concern, not codebuff's.
+    if (isOmnirouteMode()) {
+      return null
+    }
+
     try {
       const res = await httpGet(
         `https://registry.npmjs.org/${packageName}/latest`,
@@ -903,6 +925,19 @@ function createLauncher(productConfig) {
 
     if (currentVersion !== null && requiredWrapperVersion === null) {
       return
+    }
+
+    // OmniRoute mode never downloads binaries from codebuff.com. A cached
+    // binary runs even when the JS wrapper is newer (no self-update); a
+    // missing binary is a clear error rather than a download.
+    if (isOmnirouteMode()) {
+      if (currentVersion !== null) return
+      console.error('❌ No cached Freebuff binary found.')
+      console.error(
+        'OmniRoute mode does not download the binary from codebuff.com. ' +
+          'Reinstall Freebuff or run from source.',
+      )
+      process.exit(1)
     }
 
     // npm installs update this JavaScript wrapper but intentionally preserve the
@@ -1431,9 +1466,11 @@ function createLauncher(productConfig) {
     const child = spawnInstalledBinary()
     const exitListener = attachExitHandler(child)
 
-    setTimeout(() => {
-      checkForUpdates(child, exitListener)
-    }, 100)
+    if (!isOmnirouteMode()) {
+      setTimeout(() => {
+        checkForUpdates(child, exitListener)
+      }, 100)
+    }
   }
 
   return {
@@ -1457,6 +1494,7 @@ function createLauncher(productConfig) {
       getDefaultTargetKey,
       getCpuFeatureCachePath,
       getCurrentVersion,
+      getLatestVersion,
       getMetadataVersion,
       getRequiredWrapperVersion,
       ensureBinaryReady,

@@ -5,6 +5,10 @@
 
 import path from 'path'
 
+import {
+  getOmnirouteConfig,
+  OMNIROUTE_LOCAL_TOKEN,
+} from '@codebuff/common/constants/omniroute'
 import { BYOK_OPENROUTER_HEADER } from '@codebuff/common/constants/byok'
 import {
   FREEBUFF_TURN_SPEND_LIMIT_ERROR_CODE,
@@ -173,14 +177,37 @@ function fetchWithRetryableNetworkErrors(
 }
 
 /**
- * Get the model for a request: one that routes through the Codebuff backend,
- * which forwards to OpenRouter.
+ * Get the model for a request.
+ *
+ * In OmniRoute mode (`OMNIROUTE_BASE_URL` set) the request goes straight to
+ * the user's own OpenAI-compatible gateway, bypassing the Codebuff backend
+ * entirely: the gateway owns auth, billing, and model routing. `OMNIROUTE_MODEL`
+ * forces one model for every call; otherwise the agent's declared model id is
+ * passed through verbatim (the gateway's routing decides, and it can map or
+ * reject unknown ids).
  */
 export function getModelForRequest({
   apiKey,
   model,
   userId,
 }: ModelRequestParams): LanguageModel {
+  const omniroute = getOmnirouteConfig()
+  if (omniroute) {
+    return new OpenAICompatibleChatLanguageModel(omniroute.model ?? model, {
+      provider: 'omniroute',
+      url: ({ path: endpoint }) => `${omniroute.baseUrl}${endpoint}`,
+      headers: () => ({
+        Authorization: `Bearer ${omniroute.apiKey ?? OMNIROUTE_LOCAL_TOKEN}`,
+        'user-agent': `ai-sdk/openai-compatible/${VERSION}/omniroute`,
+      }),
+      // Cast: Bun's fetch type also declares a `preconnect` helper, but the AI
+      // SDK only ever invokes fetch as a plain function.
+      fetch: fetchWithRetryableNetworkErrors as typeof globalThis.fetch,
+      includeUsage: undefined,
+      supportsStructuredOutputs: true,
+    })
+  }
+
   const openrouterUsage: OpenRouterUsageAccounting = {
     cost: null,
     costDetails: {

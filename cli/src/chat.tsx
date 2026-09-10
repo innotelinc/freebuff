@@ -1,5 +1,6 @@
 import { AnalyticsEvent } from '@codebuff/common/constants/analytics-events'
 import type { FeedbackCategory } from '@codebuff/common/constants/feedback'
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 import { setFreeModeCapacityDeferralListener } from '@codebuff/sdk'
 import { safeOpen } from './utils/open-url'
 import { getAuthToken } from './utils/auth'
@@ -206,7 +207,7 @@ export const Chat = ({
     recordClick,
     recordImpression,
   } = useGravityAd({
-    enabled: IS_FREEBUFF || !hasSubscription,
+    enabled: (IS_FREEBUFF || !hasSubscription) && !isOmnirouteMode(),
     provider: 'gravity',
     inline: true,
     surface: 'cli_chat',
@@ -215,7 +216,7 @@ export const Chat = ({
     // Keep the rotating above-input slot separate for reporting continuity.
     slotPlacementId: 'Single-Ad-Unit-1',
   })
-  const showInlineAds = IS_FREEBUFF || getAdsEnabled()
+  const showInlineAds = (IS_FREEBUFF || getAdsEnabled()) && !isOmnirouteMode()
 
   // Stable identities so the message-block callbacks (set once) always call
   // the latest recorder from the hook.
