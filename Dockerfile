@@ -43,6 +43,12 @@ COPY sdk ./sdk
 COPY docker ./docker
 RUN chmod +x /app/docker/entrypoint.ts
 
+# Generate the bundled-agents module: a gitignored build artifact that
+# local-agent-registry imports at CLI boot (cli/src/agents/
+# bundled-agents.generated.ts). Without this the TUI dies with
+# "Cannot find module '../agents/bundled-agents.generated'".
+RUN cd /app/cli && bun run prebuild:agents
+
 # Onyx branding + gateway defaults. OMNIROUTE_BASE_URL is set by compose
 # (the gateway service); the model defaults to OmniRoute's free coding pool.
 ENV FREEBUFF_MODE=true \

@@ -82,6 +82,39 @@ async function runSmoke(root: string): Promise<void> {
     }
     const source = content ? 'content' : 'reasoning_content'
     console.log(`onyx smoke ok: model replied (${source}): ${reply.slice(0, 120)}`)
+
+    // Import the agent registry too — the gateway round-trip above doesn't
+    // prove the CLI itself starts. cli/src/agents/bundled-agents.generated.ts
+    // is a gitignored build artifact imported by local-agent-registry at CLI
+    // boot; a missing generated module only surfaces at import time (this
+    // bit v0.1.1: "Cannot find module '../agents/bundled-agents.generated'").
+    console.log('onyx smoke: booting the CLI runtime …')
+    const boot = Bun.spawn(
+      [
+        process.execPath,
+        '-e',
+        `const g = await import('/app/cli/src/agents/bundled-agents.generated.ts');` +
+          `const r = await import('/app/cli/src/utils/local-agent-registry.ts');` +
+          `console.log('registry ok, bundled agents: ' + Object.keys(g.bundledAgents).length +` +
+          `', loadAgentDefinitions: ' + (typeof r.loadAgentDefinitions))`,
+      ],
+      {
+        cwd: '/app/cli',
+        env: process.env,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    )
+    const [bootOut, bootErr, bootCode] = await Promise.all([
+      new Response(boot.stdout).text(),
+      new Response(boot.stderr).text(),
+      boot.exited,
+    ])
+    if (bootCode !== 0 || !bootOut.includes('registry ok')) {
+      console.error(`onyx smoke FAIL: CLI boot failed (exit ${bootCode})\n${bootOut}\n${bootErr}`)
+      process.exit(1)
+    }
+    console.log(`onyx smoke ok: CLI runtime boots (${bootOut.trim().split(': ')[1] ?? ''})`)
     process.exit(0)
   } catch (error) {
     console.error('onyx smoke FAIL:', error)
@@ -194,6 +227,14 @@ async function main(): Promise<void> {
   process.env.OMNIROUTE_MODEL = model
 
   const workdir = process.env.WORKDIR ?? '/workspace'
+
+  // A project volume is normally mounted here; `docker run` without one (or
+  // a bad WORKDIR) would otherwise die inside Bun.spawn with a bare ENOENT.
+  const { existsSync, mkdirSync } = await import('node:fs')
+  if (!existsSync(workdir)) {
+    mkdirSync(workdir, { recursive: true })
+    console.log(`  note     created missing workdir ${workdir}`)
+  }
 
   console.log(
     [

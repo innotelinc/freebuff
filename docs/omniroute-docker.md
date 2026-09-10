@@ -41,6 +41,8 @@ their tokens on `reasoning_content` count as a pass):
 docker compose run --rm -T -e ONYX_SMOKE=1 onyx
 # onyx smoke: POST http://omniroute:20128/v1/chat/completions (auto/coding:free) …
 # onyx smoke ok: model replied (content): ONYX-SMOKE-OK
+# onyx smoke: booting the CLI runtime …
+# onyx smoke ok: CLI runtime boots (96, loadAgentDefinitions)
 ```
 
 The first run builds the Onyx image and pulls the gateway, then:
