@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Freebuff CLI image — the Freebuff TUI wired to your OmniRoute gateway.
+# Onyx CLI image — the Onyx TUI wired to your OmniRoute gateway.
 #
-# The entrypoint (docker/freebuff-entrypoint.ts) waits for the gateway, mints
+# The entrypoint (docker/entrypoint.ts) waits for the gateway, auto-generates
 # an API key on first run, and forces the free-coding model pool
 # (`auto/coding:free`). The gateway itself is a separate service in
 # docker-compose.yml.
@@ -41,12 +41,12 @@ COPY freebuff ./freebuff
 COPY packages ./packages
 COPY sdk ./sdk
 COPY docker ./docker
-RUN chmod +x /app/docker/freebuff-entrypoint.ts
+RUN chmod +x /app/docker/entrypoint.ts
 
-# Freebuff branding + gateway defaults. OMNIROUTE_BASE_URL is set by compose
+# Onyx branding + gateway defaults. OMNIROUTE_BASE_URL is set by compose
 # (the gateway service); the model defaults to OmniRoute's free coding pool.
 ENV FREEBUFF_MODE=true \
     OMNIROUTE_MODEL=auto/coding:free \
     WORKDIR=/workspace
 
-ENTRYPOINT ["/app/docker/freebuff-entrypoint.ts"]
+ENTRYPOINT ["/app/docker/entrypoint.ts"]

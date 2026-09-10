@@ -1,19 +1,22 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Freebuff + OmniRoute — your own free coding-agent stack.
+# Onyx + OmniRoute — your own free coding-agent stack.
 #
 #   omniroute   your personal LLM gateway. The dashboard and the
 #               OpenAI-compatible API both live on :20128 (API under /v1).
 #               Data persists in the `omniroute-data` volume.
-#   freebuff    the Freebuff TUI, wired to the gateway: its entrypoint waits
-#               for the gateway, mints an API key on first run, and forces the
-#               `auto/coding:free` model pool — OmniRoute's auto-routing across
-#               every connected free coding model.
+#   onyx        the Onyx TUI, wired to the gateway: its entrypoint waits
+#               for the gateway, auto-generates an API key on first run, and
+#               forces the `auto/coding:free` model pool — OmniRoute's
+#               auto-routing across every connected free coding model.
 #
-# Usage — run from the directory you want Freebuff to work in:
+# Usage — run from the directory you want Onyx to work in:
 #
 #   docker compose up -d --build omniroute   # start the gateway
-#   docker compose run --rm freebuff         # open the Freebuff TUI
+#   docker compose run --rm onyx             # open the Onyx TUI
 #   docker compose logs -f omniroute         # gateway logs
+#
+# Or pull the prebuilt client image (skips the local build):
+#   image: ghcr.io/innotelinc/onyx:latest
 #
 # Overrides (all optional, via .env or the shell):
 #   OMNIROUTE_MODEL=auto/coding:free         # model/combo every request uses
@@ -24,6 +27,8 @@
 #   PROJECT_DIR=.                            # project directory mounted into the CLI
 #   WORKDIR=/workspace                       # mount point inside the container
 # ─────────────────────────────────────────────────────────────────────────────
+
+name: onyx
 
 services:
   # OmniRoute's rate-limiter backend. Internal-only, not exposed to the host.
@@ -69,13 +74,13 @@ services:
         condition: service_healthy
     # The image ships a HEALTHCHECK; `depends_on: service_healthy` waits on it.
 
-  freebuff:
+  onyx:
     build:
       context: .
       dockerfile: Dockerfile
-    image: freebuff:local
-    # Interactive TUI: needs a TTY. Use `docker compose run --rm freebuff`
-    # (do not `docker compose up -d freebuff` — it has no terminal headless).
+    image: ghcr.io/innotelinc/onyx:latest
+    # Interactive TUI: needs a TTY. Use `docker compose run --rm onyx`
+    # (do not `docker compose up -d onyx` — it has no terminal headless).
     stdin_open: true
     tty: true
     environment:
@@ -85,21 +90,21 @@ services:
       OMNIROUTE_INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:-CHANGEME}
       FREEBUFF_MODE: "true"
       WORKDIR: ${WORKDIR:-/workspace}
-      # Public config the CLI requires at boot (the release binary bakes these
+      # Public config the CLI validates at boot (the release binary bakes these
       # in at build time; the container sets placeholders). Unused in gateway
       # mode — analytics/stripe/ads stay off — override via .env if needed.
       NEXT_PUBLIC_CB_ENVIRONMENT: ${NEXT_PUBLIC_CB_ENVIRONMENT:-prod}
-      NEXT_PUBLIC_CODEBUFF_APP_URL: ${NEXT_PUBLIC_CODEBUFF_APP_URL:-https://codebuff.com}
-      NEXT_PUBLIC_FREEBUFF_APP_URL: ${NEXT_PUBLIC_FREEBUFF_APP_URL:-https://freebuff.com}
-      NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-support@codebuff.com}
+      NEXT_PUBLIC_CODEBUFF_APP_URL: ${NEXT_PUBLIC_CODEBUFF_APP_URL:-https://localhost}
+      NEXT_PUBLIC_FREEBUFF_APP_URL: ${NEXT_PUBLIC_FREEBUFF_APP_URL:-https://localhost}
+      NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-support@example.com}
       NEXT_PUBLIC_POSTHOG_API_KEY: ${NEXT_PUBLIC_POSTHOG_API_KEY:-placeholder}
       NEXT_PUBLIC_POSTHOG_HOST_URL: ${NEXT_PUBLIC_POSTHOG_HOST_URL:-https://us.i.posthog.com}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-placeholder}
-      NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL: ${NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL:-https://codebuff.com}
+      NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL: ${NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL:-https://localhost}
       NEXT_PUBLIC_WEB_PORT: ${NEXT_PUBLIC_WEB_PORT:-3000}
     volumes:
-      - ${PROJECT_DIR:-.}:/workspace # the project Freebuff edits
-      - freebuff-state:/app/state # keeps the minted gateway key across runs
+      - ${PROJECT_DIR:-.}:/workspace # the project Onyx edits
+      - onyx-state:/app/state # keeps the generated gateway key across runs
     depends_on:
       omniroute:
         condition: service_healthy
@@ -107,4 +112,4 @@ services:
 
 volumes:
   omniroute-data:
-  freebuff-state:
+  onyx-state:

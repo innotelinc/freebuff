@@ -60,12 +60,17 @@ LiteLLM, OpenRouter, Ollama, vLLM, your own router — and every request goes to
 ```bash
 git clone https://github.com/innotelinc/freebuff.git
 cd freebuff
-docker compose up -d
+docker compose up -d --build omniroute   # start the gateway
+docker compose run --rm onyx             # open the Onyx TUI
 ```
 
 The entrypoint waits for the gateway, **auto-generates an API key**, selects
 the free coding model pool (`auto/coding:free`), and drops you into the TUI
 with your project mounted at `/workspace`.
+
+Or pull the prebuilt client image instead of building:
+`ghcr.io/innotelinc/onyx:latest` — see
+[docs/omniroute-docker.md](docs/omniroute-docker.md).
 
 ### From source (point at any gateway)
 
@@ -122,8 +127,16 @@ or bring your own OpenAI-compatible endpoint.
 | `common/`               | shared types, tools, schemas, gateway cfg |
 | `packages/agent-runtime`| agent loop, tool handlers, web APIs       |
 | `agents/`               | bundled agent definitions                 |
-| `docker/`               | container entrypoint (key minting, model) |
+| `docker/`               | container entrypoint (key generation)     |
 | `docs/`                 | gateway mode + docker guides              |
+
+## Images
+
+The client image is published to GHCR by CI on every push to `main`:
+
+```bash
+docker pull ghcr.io/innotelinc/onyx:latest
+```
 
 ## Contributing
 

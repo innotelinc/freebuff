@@ -1,15 +1,16 @@
 #!/usr/bin/env bun
 /**
- * Freebuff container entrypoint.
+ * Onyx container entrypoint.
  *
  * Wires the container to the OmniRoute gateway service:
  *   1. waits for the gateway to come up,
- *   2. mints an API key on first run (POST /api/keys — open on a fresh
- *      install; the key is reused from the /app/state volume across restarts),
+ *   2. auto-generates an API key on first run (POST /api/keys — open on a
+ *      fresh install; the key is reused from the /app/state volume across
+ *      restarts),
  *   3. forces the free-coding model pool (OMNIROUTE_MODEL, default
  *      `auto/coding:free` — OmniRoute's auto-routing across free coding
  *      models; override with any model id or combo),
- *   4. execs the Freebuff TUI with the mounted project as its working dir.
+ *   4. execs the Onyx TUI with the mounted project as its working dir.
  */
 
 const GATEWAY_KEY_FILE = '/app/state/omniroute.key'
@@ -49,7 +50,7 @@ async function mintKey(root: string): Promise<string | null> {
     const res = await fetch(`${root}/api/keys`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...headers },
-      body: JSON.stringify({ name: 'freebuff-docker' }),
+      body: JSON.stringify({ name: 'onyx-docker' }),
     })
     if (!res.ok) return null
     const json = (await res.json()) as { key?: string }
@@ -68,7 +69,7 @@ async function mintKey(root: string): Promise<string | null> {
     })
     if (!login.ok) {
       console.error(
-        `⚠ Dashboard login failed (${login.status}) — could not mint an API key. Set OMNIROUTE_INITIAL_PASSWORD (and JWT_SECRET) to match the gateway, or set OMNIROUTE_API_KEY and restart freebuff.`,
+        `⚠ Dashboard login failed (${login.status}) — could not auto-generate an API key. Set OMNIROUTE_INITIAL_PASSWORD (and JWT_SECRET) to match the gateway, or set OMNIROUTE_API_KEY and restart onyx.`,
       )
       return null
     }
@@ -119,7 +120,7 @@ async function main(): Promise<void> {
 
   console.log(
     [
-      'Freebuff → OmniRoute',
+      'ONYX → OmniRoute',
       `  gateway  ${baseUrl}`,
       `  model    ${model} (auto-routed across free coding models)`,
       apiKey ? '  auth     API key ready' : '  auth     no API key — requests will likely be rejected',
