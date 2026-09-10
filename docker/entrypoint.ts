@@ -16,6 +16,79 @@
 const GATEWAY_KEY_FILE = '/app/state/omniroute.key'
 const CLI_ENTRY = '/app/cli/src/entry.ts'
 
+/**
+ * Headless CI smoke (`ONYX_SMOKE=1`): no TTY needed. Waits for the gateway,
+ * mints the API key exactly as the TUI path does, then runs one real
+ * chat-completion round-trip through the gateway with the `onyx-docker`
+ * key. Exit 0 only if the model responds.
+ */
+async function runSmoke(root: string): Promise<void> {
+  const baseUrl = process.env.OMNIROUTE_BASE_URL ?? 'http://omniroute:20128/v1'
+  process.env.OMNIROUTE_BASE_URL = baseUrl
+
+  await waitForGateway(root)
+
+  let apiKey = process.env.OMNIROUTE_API_KEY?.trim()
+  if (!apiKey) {
+    const { existsSync, readFileSync } = await import('node:fs')
+    const { mkdir, writeFile } = await import('node:fs/promises')
+    if (existsSync(GATEWAY_KEY_FILE)) {
+      apiKey = readFileSync(GATEWAY_KEY_FILE, 'utf8').trim()
+    } else {
+      const minted = await mintKey(root)
+      if (minted) {
+        apiKey = minted
+        await mkdir('/app/state', { recursive: true })
+        await writeFile(GATEWAY_KEY_FILE, minted, 'utf8')
+      }
+    }
+  }
+  if (!apiKey) {
+    console.error('onyx smoke FAIL: no API key available')
+    process.exit(1)
+  }
+
+  const model = process.env.OMNIROUTE_MODEL?.trim() || 'auto/coding:free'
+  console.log(`onyx smoke: POST ${baseUrl}/chat/completions (${model}) …`)
+  try {
+    const res = await fetch(`${root}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        // Generous budget: free-pool models may be reasoning models that
+        // spend tokens on reasoning_content before any visible content.
+        max_tokens: 512,
+        messages: [{ role: 'user', content: 'Reply with exactly: ONYX-SMOKE-OK' }],
+      }),
+      signal: AbortSignal.timeout(120_000),
+    })
+    if (!res.ok) {
+      console.error(`onyx smoke FAIL: gateway returned ${res.status}: ${await res.text()}`)
+      process.exit(1)
+    }
+    const json = (await res.json()) as {
+      choices?: Array<{
+        message?: { content?: string | null; reasoning_content?: string | null }
+      }>
+    }
+    const message = json.choices?.[0]?.message
+    const content = message?.content?.trim() || ''
+    const reasoning = message?.reasoning_content?.trim() || ''
+    const reply = content || reasoning
+    if (!reply) {
+      console.error(`onyx smoke FAIL: empty completion: ${JSON.stringify(json).slice(0, 500)}`)
+      process.exit(1)
+    }
+    const source = content ? 'content' : 'reasoning_content'
+    console.log(`onyx smoke ok: model replied (${source}): ${reply.slice(0, 120)}`)
+    process.exit(0)
+  } catch (error) {
+    console.error('onyx smoke FAIL:', error)
+    process.exit(1)
+  }
+}
+
 function gatewayRoot(baseUrl: string): string {
   return baseUrl.replace(/\/+$/, '').replace(/\/v1$/, '')
 }
@@ -94,6 +167,10 @@ async function main(): Promise<void> {
   process.env.OMNIROUTE_BASE_URL = baseUrl
   const root = gatewayRoot(baseUrl)
 
+  if (process.env.ONYX_SMOKE === '1') {
+    await runSmoke(root)
+  }
+
   await waitForGateway(root)
 
   let apiKey = process.env.OMNIROUTE_API_KEY?.trim()
@@ -138,3 +215,6 @@ async function main(): Promise<void> {
 }
 
 await main()
+
+// Ensure this file is treated as an ES module (top-level await).
+export {}
