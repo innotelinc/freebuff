@@ -24,8 +24,24 @@ docker compose -f /path/to/this/repo/docker-compose.yml run --rm onyx
 ```
 
 Prefer to skip the client build? Pull the published image instead — replace the
-`onyx` service's `build:` with `image: ghcr.io/innotelinc/onyx:latest` (pushed
-by CI on every change to `main`; see `.github/workflows/publish-image.yml`).
+`onyx` service's `build:` with `image: ghcr.io/innotelinc/onyx:latest`. CI
+publishes it on every change to `main` (`.github/workflows/publish-image.yml`),
+but only after the image passes a live smoke test: a real gateway stack is
+started and one headless chat-completion round-trip must succeed before the
+push to GHCR happens.
+
+### Headless smoke test
+
+The entrypoint doubles as a headless CI gate — no TTY needed. It waits for the
+gateway, reuses/mints the API key exactly like the TUI path, and runs one real
+chat-completion round-trip through the gateway (reasoning models that spend
+their tokens on `reasoning_content` count as a pass):
+
+```bash
+docker compose run --rm -T -e ONYX_SMOKE=1 onyx
+# onyx smoke: POST http://omniroute:20128/v1/chat/completions (auto/coding:free) …
+# onyx smoke ok: model replied (content): ONYX-SMOKE-OK
+```
 
 The first run builds the Onyx image and pulls the gateway, then:
 
