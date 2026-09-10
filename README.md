@@ -20,6 +20,9 @@ Any model. Any provider. No account. No telemetry. No ads.
 ![Telemetry](https://img.shields.io/badge/telemetry-none-00C853?style=flat-square)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff69b4?style=flat-square)
 [![CI](https://github.com/innotelinc/freebuff/actions/workflows/ci.yml/badge.svg)](https://github.com/innotelinc/freebuff/actions/workflows/ci.yml)
+[![Publish Onyx image](https://github.com/innotelinc/freebuff/actions/workflows/publish-image.yml/badge.svg)](https://github.com/innotelinc/freebuff/actions/workflows/publish-image.yml)
+[![Release](https://github.com/innotelinc/freebuff/actions/workflows/release.yml/badge.svg)](https://github.com/innotelinc/freebuff/actions/workflows/release.yml)
+[![Docker image](https://img.shields.io/badge/ghcr.io-innotelinc%2Fonyx-v0.1.0-2496ED?logo=docker&logoColor=white&style=flat-square)](https://github.com/innotelinc/freebuff/pkgs/container/onyx)
 
 </div>
 
