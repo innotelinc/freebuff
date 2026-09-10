@@ -2,6 +2,7 @@ import {
   validateAgents as validateAgentsCommon,
   type DynamicAgentValidationError,
 } from '@codebuff/common/templates/agent-validation'
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 
 import { getWebsiteUrl } from './constants'
 
@@ -81,6 +82,14 @@ export async function validateAgents(
   }
 
   let validationErrors: DynamicAgentValidationError[] = []
+
+  // Remote validation is a Codebuff-backend feature. In OmniRoute mode there
+  // is no backend to validate against, and agent definitions must not leave
+  // the machine — fall back to local validation, which is exactly as useful
+  // for the bundled and .agents/ agents that gateway mode runs.
+  if (options?.remote && isOmnirouteMode()) {
+    options = { ...options, remote: false }
+  }
 
   if (options?.remote) {
     // Remote validation: call the web API

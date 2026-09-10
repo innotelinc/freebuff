@@ -1,4 +1,6 @@
-import { AGENT_MODES, IS_FREEBUFF } from '../utils/constants'
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
+
+import { AGENT_MODES, FREE_MODE_GATED, IS_FREEBUFF } from '../utils/constants'
 
 import type { SkillsMap } from '@codebuff/common/types/skill'
 
@@ -20,8 +22,9 @@ export interface SlashCommand {
   insertText?: string
 }
 
-// Generate mode commands from the AGENT_MODES constant (excluded in Freebuff)
-const MODE_COMMANDS: SlashCommand[] = IS_FREEBUFF
+// Generate mode commands from the AGENT_MODES constant (excluded in free-gated
+// builds; available in self-hosted gateway mode where any agent may run)
+const MODE_COMMANDS: SlashCommand[] = FREE_MODE_GATED
   ? []
   : AGENT_MODES.map((mode) => ({
       id: `mode:${mode.toLowerCase()}`,
@@ -199,6 +202,12 @@ const ALL_SLASH_COMMANDS: SlashCommand[] = [
     aliases: ['model'],
   },
   {
+    id: 'omniroute-status',
+    label: 'omniroute-status',
+    description: 'Show the OmniRoute gateway connection and routing',
+    aliases: ['gateway'],
+  },
+  {
     id: 'dashboard',
     label: 'dashboard',
     description: 'Open your usage, streak and account dashboard in the browser',
@@ -220,13 +229,21 @@ const ALL_SLASH_COMMANDS: SlashCommand[] = [
   },
 ]
 
-export const SLASH_COMMANDS = IS_FREEBUFF
-  ? ALL_SLASH_COMMANDS.filter(
-      (cmd) => !FREEBUFF_REMOVED_COMMAND_IDS.has(cmd.id),
-    )
-  : ALL_SLASH_COMMANDS.filter(
-      (cmd) => !FREEBUFF_ONLY_COMMAND_IDS.has(cmd.id),
-    )
+// Slash commands that only mean something while the self-hosted OmniRoute
+// gateway mode is active (OMNIROUTE_BASE_URL set).
+const GATEWAY_ONLY_COMMAND_IDS = new Set(['omniroute-status'])
+
+export const SLASH_COMMANDS = (
+  FREE_MODE_GATED
+    ? ALL_SLASH_COMMANDS.filter(
+        (cmd) => !FREEBUFF_REMOVED_COMMAND_IDS.has(cmd.id),
+      )
+    : ALL_SLASH_COMMANDS.filter(
+        (cmd) => !FREEBUFF_ONLY_COMMAND_IDS.has(cmd.id),
+      )
+).filter((cmd) =>
+  GATEWAY_ONLY_COMMAND_IDS.has(cmd.id) ? isOmnirouteMode() : true,
+)
 
 export const SLASHLESS_COMMAND_IDS = new Set(
   SLASH_COMMANDS.filter((cmd) => cmd.implicitCommand).map((cmd) =>

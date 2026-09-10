@@ -18,7 +18,7 @@ import { useChatHistoryStore } from './state/chat-history-store'
 import { stopActiveRun } from './utils/active-run'
 import { useChatStore } from './state/chat-store'
 import type { TopBannerType } from './types/store'
-import { IS_FREEBUFF } from './utils/constants'
+import { FREE_MODE_GATED } from './utils/constants'
 import { findGitRoot } from './utils/git'
 
 import type { MultilineInputHandle } from './components/multiline-input'
@@ -347,7 +347,7 @@ const AuthedSurfaceRoutes = ({
   // Terminal state: a 409 from the gate means another CLI rotated our
   // instance id. Show a dedicated screen and stop polling — don't fall back
   // into the pre-chat screen, which would look like normal startup progress.
-  if (IS_FREEBUFF && session?.status === 'superseded') {
+  if (FREE_MODE_GATED && session?.status === 'superseded') {
     return <FreebuffSupersededScreen />
   }
 
@@ -365,7 +365,7 @@ const AuthedSurfaceRoutes = ({
   // finishing work under the server-side grace period, and the chat surface
   // itself swaps the input box for the session-ended banner.
   if (
-    IS_FREEBUFF &&
+    FREE_MODE_GATED &&
     (session === null ||
       session.status === 'none' ||
       session.status === 'country_blocked' ||

@@ -22,7 +22,7 @@ import {
 } from '../hooks/use-subscription-query'
 import { useChatStore } from '../state/chat-store'
 import { useFreebuffSessionStore } from '../state/freebuff-session-store'
-import { IS_FREEBUFF } from '../utils/constants'
+import { FREE_MODE_GATED } from '../utils/constants'
 import { logger } from '../utils/logger'
 import {
   applyActiveRunQueuePolicy,
@@ -114,7 +114,8 @@ export const ChatRuntimeProvider = ({
   }, [askUserState, mainAgentTimer])
 
   const freebuffSession = useFreebuffSessionStore((state) => state.session)
-  const sendBlocked = IS_FREEBUFF && !holdsLiveFreebuffSlot(freebuffSession)
+  const sendBlocked =
+    FREE_MODE_GATED && !holdsLiveFreebuffSlot(freebuffSession)
 
   useEffect(() => {
     if (sendBlocked) {

@@ -1,3 +1,5 @@
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
+
 import type { ToolName } from '@codebuff/sdk'
 
 import { getCliEnv } from './env'
@@ -7,6 +9,17 @@ import { getCliEnv } from './env'
  * Injected via --define at compile time; enables dead-code elimination by the bundler.
  */
 export const IS_FREEBUFF = getCliEnv().FREEBUFF_MODE === 'true'
+
+/**
+ * Free-tier gating. True only in a Freebuff build that is NOT pointed at a
+ * self-hosted OmniRoute gateway (`OMNIROUTE_BASE_URL` set). Every free-tier
+ * gate — the login wall, the free-session admission flow and model picker, the
+ * locked agent-mode picker, the send guards — keys off this instead of
+ * `IS_FREEBUFF`, so in gateway mode the user's own models serve every request
+ * and nothing about the Codebuff account gates the run. Branding stays on
+ * `IS_FREEBUFF`, so the product name and visuals are unchanged.
+ */
+export const FREE_MODE_GATED = IS_FREEBUFF && !isOmnirouteMode()
 
 /** Message shown when the user ends a freebuff session early. */
 export const END_SESSION_MESSAGE =
@@ -164,7 +177,7 @@ const HARNESS_MODE_IDS = {
  */
 export const AGENT_MODE_TO_ID = {
   DEFAULT: HARNESS_MODE_IDS[CLI_HARNESS].DEFAULT,
-  LITE: IS_FREEBUFF ? 'base2-free' : HARNESS_MODE_IDS[CLI_HARNESS].LITE,
+  LITE: FREE_MODE_GATED ? 'base2-free' : HARNESS_MODE_IDS[CLI_HARNESS].LITE,
   MAX: 'base2-max',
   PLAN: 'base2-plan',
 } as const
@@ -181,7 +194,7 @@ export const AGENT_MODES = Object.keys(AGENT_MODE_TO_ID) as AgentMode[]
  */
 export const AGENT_MODE_TO_COST_MODE = {
   DEFAULT: 'normal',
-  LITE: IS_FREEBUFF ? 'free' : 'lite',
+  LITE: FREE_MODE_GATED ? 'free' : 'lite',
   MAX: 'max',
   PLAN: 'normal',
 } as const satisfies Record<

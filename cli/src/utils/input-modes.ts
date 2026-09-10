@@ -1,4 +1,4 @@
-import { IS_FREEBUFF } from './constants'
+import { FREE_MODE_GATED } from './constants'
 
 // Input mode types and configurations
 // To add a new mode:
@@ -175,8 +175,9 @@ export const INPUT_MODE_CONFIGS: Record<InputMode, InputModeConfig> = {
   },
 }
 
-// In Freebuff, never show the agent mode toggle
-if (IS_FREEBUFF) {
+// In free-gated builds (Freebuff without a self-hosted gateway), never show
+// the agent mode toggle. Gateway mode unlocks the picker, so any agent runs.
+if (FREE_MODE_GATED) {
   for (const key of Object.keys(INPUT_MODE_CONFIGS) as InputMode[]) {
     INPUT_MODE_CONFIGS[key].showAgentModeToggle = false
   }

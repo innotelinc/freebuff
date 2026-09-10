@@ -1,5 +1,7 @@
 import { API_KEY_ENV_VAR } from '@codebuff/common/constants/paths'
 
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
+
 import { getWebsiteUrl } from './constants'
 import { getCodebuffApiKeyFromEnv } from './env'
 import { run } from './run'
@@ -65,6 +67,12 @@ export class CodebuffClient {
    * @returns Promise that resolves to true if connected, false otherwise
    */
   public async checkConnection(): Promise<boolean> {
+    // OmniRoute mode: the user's own gateway is the backend, and codebuff.com's
+    // healthz says nothing about it. Gateway reachability is established at
+    // startup, so this poller must not phone home; a dead gateway surfaces as
+    // a model-call error instead.
+    if (isOmnirouteMode()) return true
+
     try {
       const response = await fetch(`${getWebsiteUrl()}/api/healthz`, {
         method: 'GET',

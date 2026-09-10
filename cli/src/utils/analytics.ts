@@ -15,6 +15,7 @@ import { getOrCreatePersistentAnonymousId } from './anonymous-id'
 import { enqueueClientLog as defaultEnqueueClientLog } from './log-shipper'
 
 import { AnalyticsEvent } from '@codebuff/common/constants/analytics-events'
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 
 import type { LogRecordInput } from '@codebuff/common/schemas/logs'
 
@@ -66,7 +67,8 @@ let anonymousId: string | undefined
 // Real user ID after identification
 let currentUserId: string | undefined
 let client: AnalyticsClientWithIdentify | undefined
-let initializationState: 'not_started' | 'ready' | 'failed' = 'not_started'
+let initializationState: 'not_started' | 'ready' | 'failed' | 'disabled' =
+  'not_started'
 
 // Store injected dependencies (for testing)
 let injectedDeps: AnalyticsDeps | undefined
@@ -146,6 +148,14 @@ export function initAnalytics() {
   const { env, isProd, createClient, generateAnonymousId } = resolveDeps()
   client = undefined
 
+  // In OmniRoute mode the CLI talks only to the user's own gateway — never
+  // create a PostHog client (the container's placeholder key must not fire
+  // telemetry), and make every analytics entry point a no-op.
+  if (isOmnirouteMode()) {
+    initializationState = 'disabled'
+    return
+  }
+
   if (!env.NEXT_PUBLIC_POSTHOG_API_KEY || !env.NEXT_PUBLIC_POSTHOG_HOST_URL) {
     initializationState = 'failed'
     const error = new Error(
@@ -193,6 +203,10 @@ export function trackEvent(
   event: AnalyticsEvent,
   properties?: Record<string, any>,
 ): boolean {
+  if (initializationState === 'disabled') {
+    return false
+  }
+
   const { isProd, generateAnonymousId, enqueueClientLog } = resolveDeps()
   let distinctId = getDistinctId()
 
@@ -278,6 +292,10 @@ export function trackEvent(
 }
 
 export function identifyUser(userId: string, properties?: Record<string, any>) {
+  if (initializationState === 'disabled') {
+    return
+  }
+
   if (!client) {
     if (initializationState === 'failed') {
       currentUserId = userId

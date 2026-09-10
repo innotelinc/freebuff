@@ -1,5 +1,10 @@
 import { MAX_AGENT_STEP_ROWS } from '@codebuff/common/constants/agents'
 import { FREEBUFF_ACTING_USER_HEADER } from '@codebuff/common/constants/freebuff-models'
+import {
+  isOmnirouteMode,
+  OMNIROUTE_LOCAL_USER_ID,
+  OMNIROUTE_RUN_ID_PREFIX,
+} from '@codebuff/common/constants/omniroute'
 import { validateSingleAgent } from '@codebuff/common/templates/agent-validation'
 import { DynamicAgentTemplateSchema } from '@codebuff/common/types/dynamic-agent-template'
 import { getErrorObject } from '@codebuff/common/util/error'
@@ -119,6 +124,14 @@ export async function getUserInfoFromApiKey<T extends UserColumn>(
   params: GetUserInfoFromApiKeyInput<T>,
 ): GetUserInfoFromApiKeyOutput<T> {
   const { apiKey, fields, logger, signal } = params
+
+  // Self-hosted gateway mode: the Codebuff backend has no account for this
+  // key, so resolve identity locally instead of asking /api/v1/me.
+  if (isOmnirouteMode()) {
+    return Object.fromEntries(
+      fields.map((field) => [field, OMNIROUTE_LOCAL_USER_ID]),
+    ) as Awaited<GetUserInfoFromApiKeyOutput<T>>
+  }
 
   const cached = userInfoCache[apiKey]
   if (cached === null) {
@@ -323,6 +336,16 @@ export async function fetchAgentFromDatabase(
 export async function startAgentRun(
   params: ParamsOf<StartAgentRunFn>,
 ): ReturnType<StartAgentRunFn> {
+  // Self-hosted gateway mode: there is no backend to register the run with.
+  // A synthetic id keeps the run/step plumbing flowing locally.
+  if (isOmnirouteMode()) {
+    params.logger?.debug?.(
+      { agentId: params.agentId },
+      'omniroute mode: startAgentRun stubbed locally',
+    )
+    return `${OMNIROUTE_RUN_ID_PREFIX}${crypto.randomUUID()}`
+  }
+
   const { apiKey, userId, agentId, ancestorRunIds, logger, signal } = params
 
   const url = new URL(`/api/v1/agent-runs`, getWebsiteUrl())
@@ -403,6 +426,16 @@ export async function finishAgentRun(
   } = params
   const steps = pendingAgentSteps.get(runId) ?? []
   pendingAgentSteps.delete(runId)
+
+  // Self-hosted gateway mode: the synthetic run id never existed on the
+  // backend, so there is nothing to finish there.
+  if (isOmnirouteMode()) {
+    logger?.debug?.(
+      { runId, status, totalSteps },
+      'omniroute mode: finishAgentRun stubbed locally',
+    )
+    return
+  }
 
   const url = new URL(`/api/v1/agent-runs`, getWebsiteUrl())
 

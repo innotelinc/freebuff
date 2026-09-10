@@ -1,113 +1,147 @@
-# Freebuff
+<div align="center">
 
-English | [简体中文](./README.zh-CN.md)
+# ⬢ ONYX
 
-**Five free AI products for coding, building, and research.** No subscription, credits, or API key required.
+**The terminal coding agent that runs on *your* gateway.**
 
-[Freebuff](https://freebuff.com) brings specialized agents and a choice of leading models to your terminal, desktop, browser, and GitHub repositories. Text ads support access to the included models.
+Any model. Any provider. No account. No telemetry. No ads.
 
-## Choose your Freebuff
+[Landing Page](https://github.com/innotelinc/freebuff) · [Docs](docs/omniroute.md) · [Docker Quickstart](docs/omniroute-docker.md) · [Report an Issue](https://github.com/innotelinc/freebuff/issues)
 
-| Product              | What it does                        | Get started                                                           |
-| -------------------- | ----------------------------------- | --------------------------------------------------------------------- |
-| **Freebuff Desktop** | Run parallel agents locally         | [Download for macOS, Windows, or Linux](https://freebuff.com/desktop) |
-| **Freebuff CLI**     | Code from your terminal             | [Install the CLI](https://freebuff.com/cli)                           |
-| **Freebuff Web**     | Build and ship full-stack apps      | [Build an app](https://freebuff.com/web)                              |
-| **Freebuff Cloud**   | Run agents on any GitHub repository | [Connect a repository](https://freebuff.com/cloud)                    |
-| **Freebuff Chat**    | Research and think with AI          | [Start a chat](https://freebuff.com/chat)                             |
+</div>
+
+<div align="center">
+
+![License](https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square)
+![Language](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white&style=flat-square)
+![Runtime](https://img.shields.io/badge/runtime-Bun-f472b6?logo=bun&logoColor=white&style=flat-square)
+![Docker](https://img.shields.io/badge/docker-compose%20ready-2496ED?logo=docker&logoColor=white&style=flat-square)
+![Gateway](https://img.shields.io/badge/gateway-OpenAI--compatible-8A2BE2?style=flat-square)
+![Telemetry](https://img.shields.io/badge/telemetry-none-00C853?style=flat-square)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-ff69b4?style=flat-square)
+[![CI](https://github.com/innotelinc/freebuff/actions/workflows/ci.yml/badge.svg)](https://github.com/innotelinc/freebuff/actions/workflows/ci.yml)
+
+</div>
+
+---
+
+## What is Onyx?
+
+Onyx is a multi-agent coding agent for your terminal that ditches the hosted
+backend entirely. Point it at any **OpenAI-compatible gateway** — OmniRoute,
+LiteLLM, OpenRouter, Ollama, vLLM, your own router — and every request goes to
+*your* infrastructure:
+
+```
+┌──────────────┐        ┌─────────────────────┐        ┌──────────────────┐
+│   Onyx TUI   │──────▶│  Your gateway        │──────▶│  Any provider     │
+│  (this repo) │ ◀────── │  :20128/v1           │ ◀────── │  free & paid      │
+└──────────────┘        └─────────────────────┘        └──────────────────┘
+        ▲                          ▲
+        └── zero hosted-backend    └── one API key, one endpoint,
+            traffic — ever             350+ providers behind it
+```
+
+- 🧠 **Specialized agents** — context gathering, planning, editing, review, and
+  research agents divide the work instead of one monolithic prompt
+- 🔀 **Any model, any agent** — every mode (DEFAULT / LITE / MAX / PLAN) is
+  unlocked; route them all through one model or let the gateway decide
+- 🐳 **One-command stack** — `docker compose up` brings the gateway, a key
+  generator, and Onyx up together
+- 🔒 **Nothing leaves the machine** — no analytics, no health pings, no ad
+  auctions, no update checks; verified by tests
+- ⚡ **Fast & local-first** — built on Bun, tools run in-process, token
+  counting is local
 
 ## Quick start
 
-Run Freebuff in any project from your terminal:
+### Docker (the whole stack)
 
 ```bash
-npm install -g freebuff
-cd ~/my-project
-freebuff
-```
-
-Then describe what you want. Freebuff finds the relevant files, makes changes, and runs the checks that matter for your project.
-
-## Models
-
-Freebuff includes a curated model catalog. The regular picker currently offers:
-
-| Model                       | Access                  | Best for                                                          |
-| --------------------------- | ----------------------- | ----------------------------------------------------------------- |
-| **GLM 5.3 Flash**           | Full and limited access | The default everywhere; deepest reasoning, unmetered              |
-| **DeepSeek V4 Flash 07/31** | Full and limited access | Fast coding and tool use, unmetered                               |
-| **GPT-5.6 Luna**            | Full access             | Strong all-around with native images                              |
-| **MiMo 2.5**                | Full and limited access | Balanced performance with image support                           |
-| **Solar Pro 4**             | Full and limited access | Limited-time trial; 524K context, text only; unmetered at full access |
-| **Muse Spark 1.2**          | Full access             | Meta's agentic coding model; 1M context. Rate limited and shared by every user, so it queues when busy and answers on DeepSeek V4 Flash rather than making you wait |
-
-Most models draw on your normal daily sessions rather than a separate limit. GLM 5.3 Flash, DeepSeek V4 Flash 07/31, MiMo 2.5 and Solar Pro 4 are unmetered at full access and cost no session at all. Models may still serve from a quantized (Q8_0) build.
-
-DeepSeek V4 Pro was retired from the catalog; GLM 5.3 Flash replaces it as the deep-reasoning pick.
-
-Beyond the regular picker:
-
-- **Referrals and bounties** earn extra sessions on top of the free daily allowance.
-- **Gemini 3.1 Flash Lite** powers specialist tasks such as file finding and research rather than appearing in the main picker.
-
-Availability and limits depend on your access tier, product, and current capacity. Freebuff Desktop can also run locally installed Claude Code and Codex agents using your existing provider account; those connected models are separate from Freebuff's included catalog.
-
-## How Freebuff works
-
-Freebuff uses specialized agents instead of sending every task through one model and one prompt. Depending on the task, agents gather context, plan, edit or research, run tools, and review the result.
-
-- **Codebase context** — File-finding agents map the relevant parts of a project before editing.
-- **Implementation and review** — Agents can divide work, make changes, run commands, and inspect the result.
-- **Research and browser use** — Agents can investigate documentation and test applications in a real browser.
-- **Parallel local work** — Desktop isolates concurrent agents in separate workspaces.
-- **Hosted environments** — Web and Cloud provide sandboxes, previews, terminals, and deployment workflows.
-
-## Free access
-
-Freebuff is available in every country. Supported regions receive full access; other regions and VPN users receive limited access to GLM 5.3 Flash, DeepSeek V4 Flash 07/31, MiMo 2.5, and Solar Pro 4. Accounts on Freebucks use the displayed model price and balance. On the legacy session system, limited access includes six one-hour sessions per day, earnable up to seven; GLM uses earned reward sessions instead.
-
-Text ads support the included models. Freebuff shows the applicable session limits and any model-specific data-use notice before you start.
-
-<!-- BEGIN GENERATED FREEBUFF DATA USE -->
-
-**Is my data used to train AI?** Only when a model or feature says data may be used for AI training. Freebuff or the provider may then keep submissions to develop, train, test, evaluate, fine-tune, and improve AI models or products.
-
-**How is my data used and stored?** We use prompts, messages, agent traces, code, files, and repository data to provide Freebuff. We may analyze prompts and messages to personalize ads. We do not give separately uploaded files or connected repositories to advertising providers. Restricted partners may evaluate connected Cloud repositories or code used with models labeled “May use data for AI training,” but cannot otherwise use, broadly share, or train on it. See the Privacy Policy for retention, eligibility, and advertising choices.
-
-See the [Privacy Policy](https://freebuff.com/privacy-policy) for complete details.
-
-<!-- END GENERATED FREEBUFF DATA USE -->
-
-## Contributing
-
-Freebuff is a TypeScript monorepo built with Bun. Contributions to the products, agents, tools, documentation, and underlying runtime are welcome.
-
-Local development requires Docker and a configured `.env.local`; see the
-[Contributing Guide](./CONTRIBUTING.md) before starting the services.
-
-```bash
-git clone https://github.com/CodebuffAI/freebuff.git
+git clone https://github.com/innotelinc/freebuff.git
 cd freebuff
-bun install
-bun up
+docker compose up -d
 ```
 
-Start the CLI separately with:
+The entrypoint waits for the gateway, **auto-generates an API key**, selects
+the free coding model pool (`auto/coding:free`), and drops you into the TUI
+with your project mounted at `/workspace`.
+
+### From source (point at any gateway)
 
 ```bash
+bun install
+
+export OMNIROUTE_BASE_URL='http://localhost:20128/v1'   # your gateway, /v1 included
+export OMNIROUTE_API_KEY='...'                          # optional
+export OMNIROUTE_MODEL='anthropic/claude-sonnet-4'      # optional: pin one model
+
 bun start-cli
 ```
 
-See the [Contributing Guide](./CONTRIBUTING.md), [development guide](./docs/development.md), and [testing guide](./docs/testing.md) for environment setup and the checks to run before opening a pull request.
+That's it — no login, no session admission, no credits. The CLI boots
+straight into chat and talks only to your gateway.
 
-## Built on Codebuff
+## Configuration
 
-Freebuff is built on [Codebuff](https://codebuff.com), the open multi-agent framework that powers its orchestration, tools, and SDK. To create custom agents or embed them in another application, see the [Codebuff documentation](https://codebuff.com/docs) and [`@codebuff/sdk`](https://www.npmjs.com/package/@codebuff/sdk).
+| Variable             | Required | What it does                                                        |
+| -------------------- | -------- | ------------------------------------------------------------------- |
+| `OMNIROUTE_BASE_URL` | yes      | Gateway base URL **including** the version path (`…/v1`)            |
+| `OMNIROUTE_API_KEY`  | no       | Bearer token for the gateway (defaults to a local placeholder)      |
+| `OMNIROUTE_MODEL`    | no       | Force every agent onto one model id; unset = gateway decides        |
 
-## Links
+## What gets disabled in gateway mode
 
-- [Website](https://freebuff.com)
-- [GitHub](https://github.com/CodebuffAI/freebuff)
-- [Discord](https://discord.gg/yXG3w7wxfs)
-- [Privacy Policy](https://freebuff.com/privacy-policy)
-- [License](./LICENSE)
+Because there is no hosted backend, everything that would have talked to one
+is refused locally (and pinned by tests):
+
+| Surface                                  | Behavior in gateway mode        |
+| ---------------------------------------- | ------------------------------- |
+| PostHog analytics + log mirror           | never created / never ships     |
+| Free-session admission, login wall, ads  | switched off                    |
+| Usage/subscription/streak queries        | never fire                      |
+| Feedback, sponsored proposals            | refuse locally with a message   |
+| Health pings, remote agent validation    | local answers only              |
+| Self-update + binary downloads           | disabled                        |
+
+Full details in [docs/omniroute.md](docs/omniroute.md).
+
+## Running a gateway
+
+Don't have one? The bundled [OmniRoute](https://github.com/diegosouzapw/OmniRoute)
+submodule is pinned and containerized — see
+[docs/omniroute-docker.md](docs/omniroute-docker.md) for the two-minute setup,
+or bring your own OpenAI-compatible endpoint.
+
+## Project layout
+
+| Path                    | What lives there                          |
+| ----------------------- | ----------------------------------------- |
+| `cli/`                  | the terminal UI (OpenTUI + React)         |
+| `sdk/`                  | the agent SDK — model & backend routing   |
+| `common/`               | shared types, tools, schemas, gateway cfg |
+| `packages/agent-runtime`| agent loop, tool handlers, web APIs       |
+| `agents/`               | bundled agent definitions                 |
+| `docker/`               | container entrypoint (key minting, model) |
+| `docs/`                 | gateway mode + docker guides              |
+
+## Contributing
+
+This is a TypeScript monorepo built with Bun:
+
+```bash
+git clone https://github.com/innotelinc/freebuff.git
+cd freebuff
+bun install
+bun start-cli
+```
+
+Run the checks before opening a PR:
+
+```bash
+cd cli && bun run typecheck && bun test
+```
+
+## License
+
+[Apache-2.0](./LICENSE)

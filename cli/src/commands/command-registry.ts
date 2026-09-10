@@ -1,3 +1,4 @@
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 import { safeOpen } from '../utils/open-url'
 
 import {
@@ -22,6 +23,7 @@ import {
   formatProcessDiagnostics,
 } from './process-diagnostics'
 import { buildInterviewPrompt, buildPlanPrompt, buildReviewPromptFromArgs, buildSkillPrompt } from './prompt-builders'
+import { handleOmnirouteStatusCommand } from './omniroute-status'
 import { handleReasoningCommand } from './reasoning'
 import { runBashCommand } from './router'
 import { handleUsageCommand } from './usage'
@@ -33,7 +35,11 @@ import { useChatStore } from '../state/chat-store'
 import { stopActiveRun } from '../utils/active-run'
 import { useFeedbackStore } from '../state/feedback-store'
 import { useLoginStore } from '../state/login-store'
-import { AGENT_MODES, END_SESSION_MESSAGE, IS_FREEBUFF } from '../utils/constants'
+import {
+  AGENT_MODES,
+  END_SESSION_MESSAGE,
+  FREE_MODE_GATED,
+} from '../utils/constants'
 import { exitCliCleanly } from '../utils/exit-cleanly'
 import { getSystemMessage, getUserMessage } from '../utils/message-history'
 import { capturePendingAttachments } from '../utils/pending-attachments'
@@ -564,8 +570,9 @@ const ALL_COMMANDS: CommandDefinition[] = [
       clearInput(params)
     },
   }),
-  // Mode commands generated from AGENT_MODES (excluded in Freebuff)
-  ...(IS_FREEBUFF ? [] : AGENT_MODES).map((mode) =>
+  // Mode commands generated from AGENT_MODES (excluded in free-gated builds;
+  // available in self-hosted gateway mode where any agent may run)
+  ...(FREE_MODE_GATED ? [] : AGENT_MODES).map((mode) =>
     defineCommandWithArgs({
       name: `mode:${mode.toLowerCase()}`,
       aliases: [`model:${mode.toLowerCase()}`],
@@ -772,11 +779,37 @@ const ALL_COMMANDS: CommandDefinition[] = [
       })
     },
   }),
+  // /omniroute-status (gateway-only) — report how the self-hosted OmniRoute
+  // gateway mode is wired. Registered for every build, but the registry filter
+  // below drops it unless OMNIROUTE_BASE_URL is set.
+  defineCommand({
+    name: 'omniroute-status',
+    aliases: ['gateway'],
+    handler: (params) => {
+      const { message } = handleOmnirouteStatusCommand()
+      params.setMessages((prev) => [
+        ...prev,
+        getUserMessage(params.inputValue.trim()),
+        getSystemMessage(message),
+      ])
+      params.saveToHistory(params.inputValue.trim())
+      clearInput(params)
+    },
+  }),
 ]
 
-export const COMMAND_REGISTRY: CommandDefinition[] = IS_FREEBUFF
-  ? ALL_COMMANDS.filter((cmd) => !FREEBUFF_REMOVED_COMMANDS.has(cmd.name))
-  : ALL_COMMANDS.filter((cmd) => !FREEBUFF_ONLY_COMMANDS.has(cmd.name))
+// Commands that only mean something while the self-hosted OmniRoute gateway
+// mode is active (OMNIROUTE_BASE_URL set). Dropped from the registry otherwise,
+// so they never show up in slash suggestions.
+const GATEWAY_ONLY_COMMANDS = new Set(['omniroute-status'])
+
+export const COMMAND_REGISTRY: CommandDefinition[] = (
+  FREE_MODE_GATED
+    ? ALL_COMMANDS.filter((cmd) => !FREEBUFF_REMOVED_COMMANDS.has(cmd.name))
+    : ALL_COMMANDS.filter((cmd) => !FREEBUFF_ONLY_COMMANDS.has(cmd.name))
+).filter((cmd) =>
+  GATEWAY_ONLY_COMMANDS.has(cmd.name) ? isOmnirouteMode() : true,
+)
 
 export function findCommand(cmd: string): CommandDefinition | undefined {
   const lowerCmd = cmd.toLowerCase()

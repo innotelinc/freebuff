@@ -1,3 +1,7 @@
+import {
+  getOmnirouteConfig,
+  OMNIROUTE_LOCAL_TOKEN,
+} from '@codebuff/common/constants/omniroute'
 import { withTimeout } from '@codebuff/common/util/promise'
 
 import type { ClientEnv, CiEnv } from '@codebuff/common/types/contracts/env'
@@ -50,14 +54,28 @@ const callCodebuffV1 = async (params: {
   requestName: 'web-search' | 'docs-search' | 'gravity-index'
 }): Promise<{ json?: unknown; error?: string; creditsUsed?: number }> => {
   const { endpoint, payload, fetch, logger, env, requestName } = params
-  const baseUrl = params.baseUrl ?? env.clientEnv.NEXT_PUBLIC_CODEBUFF_APP_URL
-  const apiKey = params.apiKey ?? env.ciEnv.CODEBUFF_API_KEY
+  // Self-hosted gateway mode: tool calls follow the model requests to the
+  // user's own gateway instead of the Codebuff backend. The gateway exposes
+  // the same tool under `/tools/<name>` (e.g. `{base}/tools/web-search`), so
+  // a single mode switch moves every network-backed tool off codebuff.com.
+  const omniroute = getOmnirouteConfig()
+  const baseUrl =
+    omniroute?.baseUrl ??
+    params.baseUrl ??
+    env.clientEnv.NEXT_PUBLIC_CODEBUFF_APP_URL
+  // Gateway mode owns auth: the gateway's key (or the local placeholder)
+  // always wins over the Codebuff account key the run carried in.
+  const apiKey = omniroute
+    ? (omniroute.apiKey ?? OMNIROUTE_LOCAL_TOKEN)
+    : (params.apiKey ?? env.ciEnv.CODEBUFF_API_KEY)
 
   if (!baseUrl || !apiKey) {
     return { error: 'Missing Codebuff base URL or API key' }
   }
 
-  const url = `${baseUrl}${endpoint}`
+  const url = omniroute
+    ? `${baseUrl}${endpoint.replace('/api/v1', '/tools')}`
+    : `${baseUrl}${endpoint}`
   let lastError: string | undefined
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -68,7 +86,9 @@ const callCodebuffV1 = async (params: {
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${apiKey}`,
-            'x-codebuff-api-key': apiKey,
+            // The Codebuff-specific key header means nothing to a gateway and
+            // only advertises the backend it replaced.
+            ...(omniroute ? {} : { 'x-codebuff-api-key': apiKey }),
           },
           body: JSON.stringify(payload),
         }),
@@ -279,14 +299,22 @@ export async function callTokenCountAPI(params: {
   apiKey?: string
 }): Promise<{ inputTokens?: number; error?: string }> {
   const { messages, system, model, tools, fetch, logger, env } = params
-  const baseUrl = params.baseUrl ?? env.clientEnv.NEXT_PUBLIC_CODEBUFF_APP_URL
-  const apiKey = params.apiKey ?? env.ciEnv.CODEBUFF_API_KEY
+  const omniroute = getOmnirouteConfig()
+  const baseUrl =
+    omniroute?.baseUrl ??
+    params.baseUrl ??
+    env.clientEnv.NEXT_PUBLIC_CODEBUFF_APP_URL
+  const apiKey = omniroute
+    ? (omniroute.apiKey ?? OMNIROUTE_LOCAL_TOKEN)
+    : (params.apiKey ?? env.ciEnv.CODEBUFF_API_KEY)
 
   if (!baseUrl || !apiKey) {
     return { error: 'Missing Codebuff base URL or API key' }
   }
 
-  const url = `${baseUrl}/api/v1/token-count`
+  const url = omniroute
+    ? `${baseUrl}/tools/token-count`
+    : `${baseUrl}/api/v1/token-count`
   const payload: Record<string, unknown> = { messages }
   if (system) payload.system = system
   if (model) payload.model = model
@@ -299,7 +327,7 @@ export async function callTokenCountAPI(params: {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${apiKey}`,
-          'x-codebuff-api-key': apiKey,
+          ...(omniroute ? {} : { 'x-codebuff-api-key': apiKey }),
         },
         body: JSON.stringify(payload),
       }),

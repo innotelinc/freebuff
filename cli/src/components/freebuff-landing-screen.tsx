@@ -2,6 +2,7 @@ import { TextAttributes } from '@opentui/core'
 import { useKeyboard, useRenderer } from '@opentui/react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 import {
   FREEBUCKS_LABEL,
   FREEBUCKS_PICKER_NOTICE,
@@ -393,7 +394,9 @@ export const FreebuffLandingScreen: React.FC<FreebuffLandingScreenProps> = ({
       !hasReferralMenu &&
       terminalHeight >= COLLAPSED_LOGO_MIN_HEIGHT)
   const compact = terminalHeight < 22
-  const showAds = terminalHeight >= 18
+  // Gateway mode serves no Codebuff ads: there is no account to bill an
+  // impression against, so the banner slot goes back to the picker.
+  const showAds = terminalHeight >= 18 && !isOmnirouteMode()
   const textMarginBottom = 1
 
   const [sheenPosition, setSheenPosition] = useState(0)
@@ -423,7 +426,7 @@ export const FreebuffLandingScreen: React.FC<FreebuffLandingScreenProps> = ({
   // The server tries Gravity first, then falls back to ZeroClick and Carbon.
   const waitingRoomPlacementIds = visibleWaitingRoomPlacementIds(terminalWidth)
   const { ads, recordClick, recordImpression } = useGravityAd({
-    enabled: true,
+    enabled: !isOmnirouteMode(),
     forceStart: true,
     provider: 'gravity',
     // Legacy wire name for this surface — the ads API maps it to placements,

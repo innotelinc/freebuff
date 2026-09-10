@@ -1,0 +1,110 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Freebuff + OmniRoute — your own free coding-agent stack.
+#
+#   omniroute   your personal LLM gateway. The dashboard and the
+#               OpenAI-compatible API both live on :20128 (API under /v1).
+#               Data persists in the `omniroute-data` volume.
+#   freebuff    the Freebuff TUI, wired to the gateway: its entrypoint waits
+#               for the gateway, mints an API key on first run, and forces the
+#               `auto/coding:free` model pool — OmniRoute's auto-routing across
+#               every connected free coding model.
+#
+# Usage — run from the directory you want Freebuff to work in:
+#
+#   docker compose up -d --build omniroute   # start the gateway
+#   docker compose run --rm freebuff         # open the Freebuff TUI
+#   docker compose logs -f omniroute         # gateway logs
+#
+# Overrides (all optional, via .env or the shell):
+#   OMNIROUTE_MODEL=auto/coding:free         # model/combo every request uses
+#   OMNIROUTE_API_KEY=sk-...                 # pre-provisioned key (skips minting)
+#   OMNIROUTE_PORT=20128                     # host port for the gateway
+#   OMNIROUTE_INITIAL_PASSWORD=CHANGEME      # gateway dashboard password (change it!)
+#   JWT_SECRET=...                           # gateway session secret (see docs)
+#   PROJECT_DIR=.                            # project directory mounted into the CLI
+#   WORKDIR=/workspace                       # mount point inside the container
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # OmniRoute's rate-limiter backend. Internal-only, not exposed to the host.
+  redis:
+    image: docker.io/library/redis:8.6.5-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  omniroute:
+    # Published image. The pinned source lives in ./omniroute (git submodule at
+    # v3.8.50); to build from that source instead of pulling, uncomment:
+    #   build:
+    #     context: ./omniroute
+    #     target: runner-base
+    image: diegosouzapw/omniroute:latest
+    container_name: omniroute
+    restart: unless-stopped
+    # Loopback-only by default (the gateway holds your provider keys);
+    # override with e.g. OMNIROUTE_PORT=0.0.0.0:20128 to expose it on the LAN.
+    ports:
+      - "127.0.0.1:${OMNIROUTE_PORT:-20128}:20128" # dashboard + OpenAI-compatible /v1 API
+    environment:
+      DATA_DIR: /app/data
+      PORT: 20128
+      DASHBOARD_PORT: 20128
+      API_PORT: 20128
+      LIVE_WS_PORT: 20132
+      LIVE_WS_ALLOWED_ORIGINS: http://localhost:20128,http://127.0.0.1:20128
+      REDIS_URL: redis://redis:6379
+      OMNIROUTE_BASE_PATH: ${OMNIROUTE_BASE_PATH:-}
+      # Dashboard auth: the entrypoint logs in with the initial password to
+      # mint the API key. JWT_SECRET signs the dashboard session cookie.
+      INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:-CHANGEME}
+      JWT_SECRET: ${JWT_SECRET:-local-dev-insecure-secret-change-me}
+    volumes:
+      - omniroute-data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    # The image ships a HEALTHCHECK; `depends_on: service_healthy` waits on it.
+
+  freebuff:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: freebuff:local
+    # Interactive TUI: needs a TTY. Use `docker compose run --rm freebuff`
+    # (do not `docker compose up -d freebuff` — it has no terminal headless).
+    stdin_open: true
+    tty: true
+    environment:
+      OMNIROUTE_BASE_URL: http://omniroute:20128/v1
+      OMNIROUTE_MODEL: ${OMNIROUTE_MODEL:-auto/coding:free}
+      OMNIROUTE_API_KEY: ${OMNIROUTE_API_KEY:-}
+      OMNIROUTE_INITIAL_PASSWORD: ${OMNIROUTE_INITIAL_PASSWORD:-CHANGEME}
+      FREEBUFF_MODE: "true"
+      WORKDIR: ${WORKDIR:-/workspace}
+      # Public config the CLI requires at boot (the release binary bakes these
+      # in at build time; the container sets placeholders). Unused in gateway
+      # mode — analytics/stripe/ads stay off — override via .env if needed.
+      NEXT_PUBLIC_CB_ENVIRONMENT: ${NEXT_PUBLIC_CB_ENVIRONMENT:-prod}
+      NEXT_PUBLIC_CODEBUFF_APP_URL: ${NEXT_PUBLIC_CODEBUFF_APP_URL:-https://codebuff.com}
+      NEXT_PUBLIC_FREEBUFF_APP_URL: ${NEXT_PUBLIC_FREEBUFF_APP_URL:-https://freebuff.com}
+      NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-support@codebuff.com}
+      NEXT_PUBLIC_POSTHOG_API_KEY: ${NEXT_PUBLIC_POSTHOG_API_KEY:-placeholder}
+      NEXT_PUBLIC_POSTHOG_HOST_URL: ${NEXT_PUBLIC_POSTHOG_HOST_URL:-https://us.i.posthog.com}
+      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-placeholder}
+      NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL: ${NEXT_PUBLIC_STRIPE_CUSTOMER_PORTAL:-https://codebuff.com}
+      NEXT_PUBLIC_WEB_PORT: ${NEXT_PUBLIC_WEB_PORT:-3000}
+    volumes:
+      - ${PROJECT_DIR:-.}:/workspace # the project Freebuff edits
+      - freebuff-state:/app/state # keeps the minted gateway key across runs
+    depends_on:
+      omniroute:
+        condition: service_healthy
+    # entrypoint comes from the Dockerfile: wait for gateway → mint key → exec TUI
+
+volumes:
+  omniroute-data:
+  freebuff-state:

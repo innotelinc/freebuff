@@ -1,4 +1,5 @@
 import { IS_DEV, IS_TEST, IS_CI } from '@codebuff/common/env'
+import { isOmnirouteMode } from '@codebuff/common/constants/omniroute'
 
 import { getApiClient } from './codebuff-api'
 import { getCliEnv } from './env'
@@ -78,6 +79,9 @@ const clientLogFlusher = createClientLogFlusher({
 })
 
 function enabled(): boolean {
+  // In OmniRoute mode the CLI talks only to the user's own gateway — never
+  // mirror logs to the Codebuff backend.
+  if (isOmnirouteMode()) return false
   const flag = getCliEnv().CODEBUFF_SHIP_LOGS
   if (flag === 'true') return true
   if (flag === 'false') return false

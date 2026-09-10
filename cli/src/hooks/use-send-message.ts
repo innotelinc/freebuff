@@ -11,7 +11,11 @@ import {
 } from './use-freebuff-session'
 import { getSelectedFreebuffReasoningEffort } from '../state/freebuff-model-store'
 import { getCodebuffClient } from '../utils/codebuff-client'
-import { AGENT_MODE_TO_COST_MODE, IS_FREEBUFF } from '../utils/constants'
+import {
+  AGENT_MODE_TO_COST_MODE,
+  FREE_MODE_GATED,
+  IS_FREEBUFF,
+} from '../utils/constants'
 import { createEventHandlerState } from '../utils/create-event-handler-state'
 import { createRunConfig } from '../utils/create-run-config'
 import { getAgentIdForMode } from '../utils/freebuff-agent-selection'
@@ -279,7 +283,7 @@ export const useSendMessage = ({
       // session-ended banner. Catches sends that bypass the queue's
       // sendBlocked hold (direct review-screen answers) and the dequeue race
       // where the slot expires between the queue's check and this call.
-      if (IS_FREEBUFF && !getFreebuffInstanceId()) {
+      if (FREE_MODE_GATED && !getFreebuffInstanceId()) {
         markFreebuffSessionEnded()
         requeueMessageAtFront?.({ content, attachments: attachments ?? [] })
         resetEarlyReturnState({
@@ -596,7 +600,7 @@ export const useSendMessage = ({
         // sending the default explicitly instead would make every turn look
         // like a deliberate user choice and would override an agent's own
         // declared reasoning (see applyFreebuffReasoningDefaults).
-        const freebuffReasoningEffort = IS_FREEBUFF
+        const freebuffReasoningEffort = FREE_MODE_GATED
           ? getSelectedFreebuffReasoningEffort()
           : null
         const runConfig = createRunConfig({
@@ -610,7 +614,7 @@ export const useSendMessage = ({
           signal: abortController.signal,
           costMode: AGENT_MODE_TO_COST_MODE[agentMode],
           extraCodebuffMetadata:
-            IS_FREEBUFF && freebuffInstanceId
+            FREE_MODE_GATED && freebuffInstanceId
               ? {
                   freebuff_instance_id: freebuffInstanceId,
                   ...(freebuffReasoningEffort
