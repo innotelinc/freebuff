@@ -1,0 +1,70 @@
+# Cuts a release: tags the repo, opens the GitHub release with generated
+# notes, and publishes the matching ghcr.io/innotelinc/onyx:v… image.
+#
+# Run it from the Actions tab → "Release" → Run workflow, entering a semver
+# version like 0.1.1 (no `v` prefix — it is added).
+#
+# Note: tags pushed with GITHUB_TOKEN do not trigger other workflows, so the
+# image publish is dispatched explicitly at the new tag ref.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version, e.g. 0.1.1 (the v prefix is added)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Tag and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so generated notes can diff tags
+
+      - name: Validate the version
+        run: |
+          V="${{ inputs.version }}"
+          if ! [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Version must be semver like 0.1.1 (no v prefix), got: $V"
+            exit 1
+          fi
+          git fetch --tags --force
+          if git rev-parse "v$V" >/dev/null 2>&1; then
+            echo "::error::Tag v$V already exists"
+            exit 1
+          fi
+          echo "Releasing v$V from $(git rev-parse --short HEAD)"
+
+      - name: Create and push the tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ inputs.version }}" -m "Onyx v${{ inputs.version }}"
+          git push origin "v${{ inputs.version }}"
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ inputs.version }}" \
+            --title "Onyx v${{ inputs.version }}" \
+            --generate-notes \
+            --verify-tag
+
+      - name: Publish the matching image
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh workflow run publish-image.yml --repo "$GITHUB_REPOSITORY" \
+            --ref "v${{ inputs.version }}"
+          echo "Image publish dispatched at ref v${{ inputs.version }} — see the 'Publish Onyx image' workflow."

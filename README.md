@@ -68,9 +68,12 @@ The entrypoint waits for the gateway, **auto-generates an API key**, selects
 the free coding model pool (`auto/coding:free`), and drops you into the TUI
 with your project mounted at `/workspace`.
 
-Or pull the prebuilt client image instead of building:
-`ghcr.io/innotelinc/onyx:latest` — see
-[docs/omniroute-docker.md](docs/omniroute-docker.md).
+Or pull the prebuilt client image instead of building (pinned to the latest
+verified release):
+`ghcr.io/innotelinc/onyx:v0.1.0` — see
+[docs/omniroute-docker.md](docs/omniroute-docker.md). `latest` tracks `main`;
+every release gets its own `v*` tag, and CI only publishes after a live
+smoke test passes.
 
 ### From source (point at any gateway)
 
@@ -132,11 +135,19 @@ or bring your own OpenAI-compatible endpoint.
 
 ## Images
 
-The client image is published to GHCR by CI on every push to `main`:
+The client image is published to GHCR by CI — smoke-tested against a live
+gateway, then pushed. Pin to a release tag:
 
 ```bash
-docker pull ghcr.io/innotelinc/onyx:latest
+docker pull ghcr.io/innotelinc/onyx:v0.1.0
 ```
+
+Releases are cut with **Actions → Release** (enter a version like `0.1.1`);
+it tags the repo, opens the GitHub release with generated notes, and the
+publish workflow pushes the matching `ghcr.io/innotelinc/onyx:v…` image.
+> The GHCR package is currently private — make it public once via
+> *your repo → Packages → onyx → Package settings → Danger Zone →*
+> *Change visibility* to pull without `docker login`.
 
 ## Contributing
 
