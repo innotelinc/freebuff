@@ -6,7 +6,7 @@
 
 Any model. Any provider. No account. No telemetry. No ads.
 
-[Landing Page](https://github.com/innotelinc/freebuff) · [Docs](docs/omniroute.md) · [Docker Quickstart](docs/omniroute-docker.md) · [Report an Issue](https://github.com/innotelinc/freebuff/issues)
+[Landing Page](https://innotelinc.github.io/freebuff/) · [Docs](docs/omniroute.md) · [Docker Quickstart](docs/omniroute-docker.md) · [Report an Issue](https://github.com/innotelinc/freebuff/issues)
 
 </div>
 
@@ -26,6 +26,13 @@ Any model. Any provider. No account. No telemetry. No ads.
 [![Docker image](https://img.shields.io/badge/ghcr.io-innotelinc%2Fonyx-published-2496ED?logo=docker&logoColor=white&style=flat-square)](https://github.com/innotelinc/freebuff/pkgs/container/onyx)
 
 </div>
+
+> **ONYX** is the terminal coding agent of the [Innotel Platform Stack](https://github.com/innotelinc/innotel-platform-stack): it
+> speaks any OpenAI-compatible gateway — the bundled OmniRoute, or one you already run —
+> so any model or provider can drive it, with no account, no telemetry and no hosted
+> backend. The agent, its tools and its token counting run locally; only the gateway sees
+> a request, and the compose stack brings that gateway up beside it. **Landing page:**
+> [innotelinc.github.io/freebuff](https://innotelinc.github.io/freebuff/)
 
 ---
 
@@ -88,8 +95,10 @@ Or pull the prebuilt client image instead of building (pinned to the latest
 verified release):
 `ghcr.io/innotelinc/onyx:v0.1.0` — see
 [docs/omniroute-docker.md](docs/omniroute-docker.md). `latest` tracks `main`;
-every release gets its own `v*` tag, and CI only publishes after a live
-smoke test passes.
+every release gets its own `v*` tag. The publish workflow builds and pushes the
+image, and runs the live round-trip smoke test on the way where a gateway is
+declared for the repository (`ONYX_SMOKE_GATEWAY=true`) — a hosted runner has no
+providers of its own to round-trip through.
 
 ### From source (point at any gateway)
 
@@ -151,8 +160,9 @@ or bring your own OpenAI-compatible endpoint.
 
 ## Images
 
-The client image is published to GHCR by CI — smoke-tested against a live
-gateway, then pushed. Pin to a release tag:
+The client image is published to GHCR by CI. Where a live gateway is configured
+for the repository, the round-trip smoke test runs before the push. Pin to a
+release tag:
 
 ```bash
 docker pull ghcr.io/innotelinc/onyx:v0.1.0
@@ -161,9 +171,7 @@ docker pull ghcr.io/innotelinc/onyx:v0.1.0
 Releases are cut with **Actions → Release** (enter a version like `0.1.1`);
 it tags the repo, opens the GitHub release with generated notes, and the
 publish workflow pushes the matching `ghcr.io/innotelinc/onyx:v…` image.
-> The GHCR package is currently private — make it public once via
-> *your repo → Packages → onyx → Package settings → Danger Zone →*
-> *Change visibility* to pull without `docker login`.
+The package is public: `docker pull ghcr.io/innotelinc/onyx` needs no `docker login`.
 
 ## Contributing
 
